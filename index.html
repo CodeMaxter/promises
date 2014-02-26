@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<!--
+To change this license header, choose License Headers in Project Properties.
+To change this template file, choose Tools | Templates
+and open the template in the editor.
+-->
+<html>
+    <head>
+        <title>Really minimalistic Promise Library</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width">
+    </head>
+    <body>
+        
+        <script type="text/javascript" src="js/Deferred.js"></script>
+        <script type="text/javascript" src="js/Promise.js"></script>
+        <script type="text/javascript">
+            var promise = new Promise(function(resolve, reject) {
+              resolve(1);
+            });
+
+            promise.then(function(val) {
+                console.log(val); // 1
+                return val + 2;
+            }).then(function(val) {
+                console.log(val); // 3
+                return val + 2;
+            }).then(function(val) {
+                console.log(val); // 5
+            });
+
+            var promise = new Promise(function(resolve, reject) {
+                resolve('{"key": "value"}');
+            });
+
+            promise.then(JSON.parse).then(function(response) {
+                console.log("Yey JSON!", response);
+            });
+        </script>
+    </body>
+</html>
