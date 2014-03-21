@@ -16,18 +16,30 @@ and open the template in the editor.
         <script type="text/javascript" src="js/Promise.js"></script>
         <script type="text/javascript">
             var promise = new Promise(function(resolve, reject) {
-              resolve(1);
+                resolve(1);
+//                reject('Something is wrong');
             });
 
             promise.then(function(val) {
                 console.log(val); // 1
+                console.log('The actual state is %s', promise.getState());
                 return val + 2;
             }).then(function(val) {
+                throw new Error('Something is wrong');
                 console.log(val); // 3
+                console.log('The actual state is %s', promise.getState());
                 return val + 2;
             }).then(function(val) {
                 console.log(val); // 5
+                console.log('The actual state is %s', promise.getState());
+                return val;
+            }).done(function (value) {
+                console.log('All process is done. Resul: %s', value);
+            }, function (reason) {
+                console.log('Runs if something went wrong. Reason: %s', reason.message);
             });
+
+            console.log('The actual state is %s', promise.getState());
 
             var promise = new Promise(function(resolve, reject) {
                 resolve('{"key": "value"}');
@@ -35,7 +47,10 @@ and open the template in the editor.
 
             promise.then(JSON.parse).then(function(response) {
                 console.log("Yey JSON!", response);
+                return response;
             });
+
+            console.log('The actual state is %s', promise.getState());
         </script>
     </body>
 </html>

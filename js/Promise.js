@@ -1,14 +1,17 @@
-var Promise = (function (Deferred) {
+var Promise = /*Promise || */(function (Deferred) {
     "use strict";
 
     // private members
-    var Promise, state = null, value = null, deferreds = [],
-        doResolve, finale, handle, reject, resolve, self = this;
+    var Promise, state = 'pending', value = null, deferreds = [],
+        doResolve, finale, handle, executeResolver, reject, resolve, self = this;
 
     finale = function() {
-        deferreds.forEach(function(deferred) {
-            handle(deferred);
-        });
+//        deferreds.forEach(function(deferred) {
+//            handle(deferred);
+//        });
+        for (var index = 0, length = deferreds.length; index < length; ++index) {
+            handle(deferreds[index]);
+        }
 
         deferreds.length = 0;
     };
@@ -20,10 +23,10 @@ var Promise = (function (Deferred) {
         }
 
         setTimeout(function() {
-            var result, callback = state ? deferred.onFulfilled : deferred.onRejected;
+            var result, callback = state === 'fulfilled' ? deferred.onFulfilled : deferred.onRejected;
 
             if (null === callback) {
-                (state ? deferred.resolve : deferred.reject)(value);
+                (state === 'fulfilled' ? deferred.resolve : deferred.reject)(value);
                 return;
             }
 
@@ -40,7 +43,7 @@ var Promise = (function (Deferred) {
     };
 
     reject = function(newValue) {
-        state = false;
+        state = 'rejected';
         value = newValue;
         finale();
     };
@@ -59,7 +62,7 @@ var Promise = (function (Deferred) {
                 }
             }
 
-            state = true;
+            state = 'fulfilled';
             value = newValue;
             finale();
         } catch (exception) {
@@ -67,7 +70,7 @@ var Promise = (function (Deferred) {
         }
     };
 
-    doResolve = function(resolver, onFulfilled, onRejected) {
+    executeResolver = function(resolver, onFulfilled, onRejected) {
         var done = false;
 
         try {
@@ -112,17 +115,39 @@ var Promise = (function (Deferred) {
 
         this.value = null;
 
-        doResolve(resolver, resolve, reject);
+        executeResolver(resolver, resolve, reject);
     };
 
     Promise.prototype = {
         then: function(onFulfilled, onRejected) {
             return new Promise(function(resolve, reject) {
-                handle(new Deferred(onFulfilled, onRejected, resolve, reject))
+                handle(new Deferred(onFulfilled, onRejected, resolve, reject));
             });
+        },
+        getState: function () {
+            return state;
+        },
+        done: function(onFulfilled, onRejected) {
+//            if (this.isResolved()) {
+            if ('fulfilled' === this.getState()) {
+                onFulfilled.call(this, value);
+//            } else if (this.isRejected()) {
+            } else if ('rejected' === this.getState()) {
+                if (onRejected) {
+                    onRejected.call(this, value);
+                }
+            }/* else {
+                this.callback = callback;
+                if (onRejected) {
+                    this.errback = errback;
+                }
+            }*/
+        },
+        fail: function (onRejected) {
+            
         }
     };
 
     // return module
     return Promise;
-}(Deferred));
+})(Deferred);
