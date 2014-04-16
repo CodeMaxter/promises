@@ -1,110 +1,84 @@
-var Promise = /*Promise || */(function (Deferred) {
+/**
+ * A promise can be in one of 2 states.
+ * The ERROR and SUCCESS states are terminal, the PENDING state is the only
+ * start state.
+ */
+var Promise = /*Promise || */(function() {
     "use strict";
 
-    // private members
-    var Promise, state = 'pending', value = null, deferreds = [],
-        doResolve, finale, handle, executeResolver, reject, resolve, self = this;
-
-    finale = function() {
-//        deferreds.forEach(function(deferred) {
-//            handle(deferred);
-//        });
-        for (var index = 0, length = deferreds.length; index < length; ++index) {
-            handle(deferreds[index]);
-        }
-
-        deferreds.length = 0;
-    };
-
-    handle = function(deferred) {
-        if (state === null) {
-            deferreds.push(deferred);
-            return;
-        }
-
-        setTimeout(function() {
-            var result, callback = state === 'fulfilled' ? deferred.onFulfilled : deferred.onRejected;
-
-            if (null === callback) {
-                (state === 'fulfilled' ? deferred.resolve : deferred.reject)(value);
-                return;
-            }
-
-            try {
-                result = callback(value);
-            }
-            catch (exception) {
-                deferred.reject(exception);
-                return;
-            }
-
-            deferred.resolve(result);
-        }.apply(value), 0);
-    };
-
-    reject = function(newValue) {
-        state = 'rejected';
-        value = newValue;
-        finale();
-    };
-
-    resolve = function(newValue) {
-        try {
-            if (newValue === self) {
-                throw new TypeError('A promise cannot be resolved with itself.');
-            }
-
-            if (newValue && (typeof newValue === 'object' || typeof newValue === 'function')) {
-                var then = newValue.then;
-                if (typeof then === 'function') {
-                    doResolve(then.bind(newValue), resolve, reject);
-                    return;
-                }
-            }
-
-            state = 'fulfilled';
-            value = newValue;
-            finale();
-        } catch (exception) {
-            reject(exception);
-        }
-    };
-
-    executeResolver = function(resolver, onFulfilled, onRejected) {
-        var done = false;
-
-        try {
-            resolver(function(value) {
-                if (done) {
-                    return;
-                }
-
-                done = true;
-                onFulfilled(value);
-            }, function(reason) {
-                if (done) {
-                    return;
-                }
-
-                done = true;
-                onRejected(reason);
-            });
-        } catch (exception) {
-            if (done) {
-                return;
-            }
-
-            done = true;
-            onRejected(exception);
-        }
-    };
-
     /**
+     * Constructor
      * 
      * @param function resolver
      * @returns Promise
      */
-    Promise = function(resolver) {
+    var Promise = function(resolver) {
+        // private members
+        var _self = this, _value = null, _deferreds = [], _finally, _handle, 
+            _reject, _resolve, PENDING = 0, REJECTED = -1, FULFILLED = 1, 
+            _state = PENDING;
+
+        _finally = function() {
+            for (var index = 0, length = _deferreds.length; index < length; ++index) {
+                _handle(_deferreds[index]);
+            }
+
+            _deferreds.length = 0;
+        };
+
+        _handle = function(deferred) {
+            if (PENDING === _state) {
+                _deferreds.push(deferred);
+                return;
+            }
+
+            setTimeout(function() {
+                var result, callback = FULFILLED === _state ? deferred.onFulfilled : deferred.onRejected;
+
+                if (null === callback) {
+                    (FULFILLED === _state ? deferred.resolve : deferred.reject)(_value);
+                    return;
+                }
+
+                try {
+                    result = callback(_value);
+                } catch (exception) {
+                    deferred.reject(exception);
+                    return;
+                }
+
+                deferred.resolve(result);
+            }.apply(_value), 0);
+        };
+
+        _reject = function(newValue) {
+            _state = REJECTED;
+            _value = newValue;
+            _finally();
+        };
+
+        _resolve = function(newValue) {
+            try {
+                if (newValue === _self) {
+                    throw new TypeError('A promise cannot be resolved with itself.');
+                }
+
+                if (newValue && (typeof newValue === 'object' || typeof newValue === 'function')) {
+                    var then = newValue.then;
+                    if (typeof then === 'function') {
+                        then.call(newValue, _resolve, _reject)
+                        return;
+                    }
+                }
+
+                _state = FULFILLED;
+                _value = newValue;
+                _finally();
+            } catch (exception) {
+                _reject(exception);
+            }
+        };
+
         if (typeof this !== 'object') {
             throw new TypeError('Promises must be constructed via new');
         }
@@ -113,41 +87,74 @@ var Promise = /*Promise || */(function (Deferred) {
             throw new TypeError('Promise constructor takes a function argument')
         }
 
-        this.value = null;
+        // Privileged members
+        this.then = function(onFulfilled, onRejected) {
+            return new Promise(function(resolve, reject) {
+                _handle(Promise.defer(onFulfilled, onRejected, resolve, reject));
+            });
+        };
 
-        executeResolver(resolver, resolve, reject);
+        try {
+            resolver(_resolve, _reject);
+        } catch (e) {
+            _reject(e);
+        }
+    };
+
+    // Static methods
+    Promise.reject = function(reason) {
+        return new Promise(function(resolve, reject) {
+            reject(reason);
+        });
+    };
+
+    Promise.resolve = function(value) {
+        if (value instanceof Promise) {
+            return value;
+        }
+
+        return new Promise(function(resolve) {
+            resolve(value);
+        });
     };
 
     Promise.prototype = {
-        then: function(onFulfilled, onRejected) {
-            return new Promise(function(resolve, reject) {
-                handle(new Deferred(onFulfilled, onRejected, resolve, reject));
-            });
-        },
-        getState: function () {
-            return state;
-        },
         done: function(onFulfilled, onRejected) {
-//            if (this.isResolved()) {
-            if ('fulfilled' === this.getState()) {
-                onFulfilled.call(this, value);
-//            } else if (this.isRejected()) {
-            } else if ('rejected' === this.getState()) {
-                if (onRejected) {
-                    onRejected.call(this, value);
-                }
-            }/* else {
-                this.callback = callback;
-                if (onRejected) {
-                    this.errback = errback;
-                }
-            }*/
+            var self = arguments.length ? this.then.apply(this, arguments) : this;
+            self.then(null, function(reason) {
+                setTimeout(function() {
+//                    throw reason;
+                }, 0);
+            });
+
+            return undefined;
         },
-        fail: function (onRejected) {
-            
+        'catch': function(onRejected) {
+            this.then(null, onRejected);
+            return this;
+        },
+        isComplete: function() {
+            return _state !== PENDING;
+        },
+        isRejected: function() {
+            return _state === REJECTED;
+        },
+        isResolved: function() {
+            return _state === FULFILLED;
         }
+    };
+
+//    Promise.defer = _getDeferred;
+    Promise.defer = function(onFulfilled, onRejected, resolve, reject) {
+        return {
+//            promise: new Promise(function (resolve, reject) {}),
+            onFulfilled: typeof onFulfilled === 'function' ? onFulfilled : null,
+            onRejected: typeof onRejected === 'function' ? onRejected : null,
+            resolve: resolve,
+            reject: reject
+        };
     };
 
     // return module
     return Promise;
-})(Deferred);
+})();

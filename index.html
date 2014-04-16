@@ -11,46 +11,54 @@ and open the template in the editor.
         <meta name="viewport" content="width=device-width">
     </head>
     <body>
-        
-        <script type="text/javascript" src="js/Deferred.js"></script>
-        <script type="text/javascript" src="js/Promise.js"></script>
-        <script type="text/javascript">
+        <div>Messages:</div>
+        <textarea id="messages" cols="50" rows="20"></textarea>
+
+        <script src="js/Promise.js"></script>
+        <script>
             var promise = new Promise(function(resolve, reject) {
-                resolve(1);
-//                reject('Something is wrong');
+                setTimeout(function () {
+                    var probability = Math.floor((Math.random()*10) + 1);
+                    if (probability < 6) {
+                        resolve(probability);
+                    } else {
+                        reject('Bad luck. The probability was ' + probability);
+                    }
+                }, 800);
             });
 
-            promise.then(function(val) {
-                console.log(val); // 1
-                console.log('The actual state is %s', promise.getState());
+            var messages = document.querySelector('#messages');
+            
+            promise.then(function (val) {
+                messages.value += val + '\n'; // 1
                 return val + 2;
-            }).then(function(val) {
-                throw new Error('Something is wrong');
-                console.log(val); // 3
-                console.log('The actual state is %s', promise.getState());
+            }).then(function (val) {
+                messages.value += val + '\n'; // 3
                 return val + 2;
-            }).then(function(val) {
-                console.log(val); // 5
-                console.log('The actual state is %s', promise.getState());
+            }).then(function (val) {
+                messages.value += val + '\n'; // 5
                 return val;
+            }).catch(function (reason) {
+                messages.value += 'Fail: ' + reason + '\n';
+                return reason;
             }).done(function (value) {
-                console.log('All process is done. Resul: %s', value);
-            }, function (reason) {
-                console.log('Runs if something went wrong. Reason: %s', reason.message);
-            });
+                messages.value += 'All process is done. Result: ' + value + '\n';
+            }/*, function (reason) {
+                messages.value += 'Fail: ' + reason + '\n';
+            }*/);
 
-            console.log('The actual state is %s', promise.getState());
+//            console.log('The actual state is %s', promise.getState());
 
             var promise = new Promise(function(resolve, reject) {
                 resolve('{"key": "value"}');
             });
 
             promise.then(JSON.parse).then(function(response) {
-                console.log("Yey JSON!", response);
+                messages.value += 'Yey JSON! ' + JSON.stringify(response) + '\n';
                 return response;
             });
 
-            console.log('The actual state is %s', promise.getState());
+//            console.log('The actual state is %s', promise.getState());
         </script>
     </body>
 </html>
