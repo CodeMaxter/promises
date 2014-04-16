@@ -3,7 +3,7 @@
 This library is a light and dead simple [Promises](http://www.promisejs.org/) implementation following a 
 well-structured OOP pattern.
 
-I hope to create a compliant with the Promises/A+ specification.
+I hope to create a compliant with the Promises/A+ specification. If you find an error or fault please report it and will be corrected in the shortest possible time.
 
 ## Usage
 To use the library simply include the file with the class:
